@@ -1,300 +1,51 @@
-"""
-Mini interface web pour déclencher la réservation depuis iPhone/Safari
-Lance : python app.py
-Puis ouvre http://<IP-du-PC>:5000 dans Safari
-"""
+name: Padel Booker
 
-from flask import Flask, render_template_string, request, jsonify
-import threading
-import json
-import sys
-import os
+on:
+  workflow_dispatch:
+    inputs:
+      chosen_day:
+        description: 'Jour (Lundi/Mardi/Mercredi/Jeudi)'
+        required: true
+        type: choice
+        options:
+          - Lundi
+          - Mardi
+          - Mercredi
+          - Jeudi
+      wellpass_code:
+        description: 'Code egym Wellpass'
+        required: true
+        type: string
 
-sys.path.insert(0, os.path.dirname(__file__))
-from padel_booker import run, next_week_dates, TARGET_DAYS
+jobs:
+  reserver:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-app = Flask(__name__)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-# État global de la réservation en cours
-reservation_status = {"running": False, "result": None, "log": []}
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
 
-HTML = """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>🎾 Padel UCPA</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f1923;
-      color: #fff;
-      min-height: 100vh;
-      padding: 24px 16px;
-    }
-    h1 {
-      text-align: center;
-      font-size: 1.5rem;
-      margin-bottom: 4px;
-      color: #4fc3f7;
-    }
-    .subtitle {
-      text-align: center;
-      color: #78909c;
-      font-size: 0.85rem;
-      margin-bottom: 28px;
-    }
-    .card {
-      background: #1c2b38;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 16px;
-      border: 1px solid #2a3f50;
-    }
-    .card h2 {
-      font-size: 1rem;
-      color: #4fc3f7;
-      margin-bottom: 14px;
-      font-weight: 600;
-    }
-    .day-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .day-btn {
-      padding: 14px 10px;
-      border-radius: 12px;
-      border: 2px solid #2a3f50;
-      background: #0f1923;
-      color: #fff;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .day-btn.selected {
-      border-color: #4fc3f7;
-      background: #1a3a52;
-      color: #4fc3f7;
-    }
-    .day-btn .date {
-      font-size: 0.72rem;
-      font-weight: 400;
-      color: #78909c;
-      margin-top: 3px;
-    }
-    .day-btn.selected .date { color: #90caf9; }
-    label {
-      display: block;
-      font-size: 0.8rem;
-      color: #78909c;
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 14px 16px;
-      background: #0f1923;
-      border: 1.5px solid #2a3f50;
-      border-radius: 12px;
-      color: #fff;
-      font-size: 1rem;
-      outline: none;
-      -webkit-appearance: none;
-    }
-    input:focus { border-color: #4fc3f7; }
-    .btn-reserve {
-      width: 100%;
-      padding: 16px;
-      border-radius: 14px;
-      border: none;
-      background: linear-gradient(135deg, #0288d1, #26c6da);
-      color: #fff;
-      font-size: 1.1rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 8px;
-      -webkit-tap-highlight-color: transparent;
-      letter-spacing: 0.3px;
-    }
-    .btn-reserve:disabled {
-      background: #2a3f50;
-      color: #546e7a;
-      cursor: not-allowed;
-    }
-    .status-box {
-      border-radius: 14px;
-      padding: 16px;
-      margin-top: 16px;
-      font-size: 0.9rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      font-family: 'Courier New', monospace;
-      border: 1px solid #2a3f50;
-      background: #0a1520;
-      color: #b0bec5;
-      max-height: 220px;
-      overflow-y: auto;
-    }
-    .result-ok  { background: #0a2e1a; border-color: #2e7d32; color: #a5d6a7; padding: 16px; border-radius: 14px; margin-top: 14px; font-weight: 600; text-align: center; font-size: 1rem; }
-    .result-err { background: #2e0a0a; border-color: #7d2e2e; color: #ef9a9a; padding: 16px; border-radius: 14px; margin-top: 14px; font-weight: 600; text-align: center; font-size: 1rem; }
-    .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body>
-  <h1>🎾 Padel UCPA</h1>
-  <p class="subtitle">Paris 19e · Créneau 7h–8h</p>
+      - name: Run booker
+        env:
+          UCPA_EMAIL: ${{ secrets.UCPA_EMAIL }}
+          UCPA_PASSWORD: ${{ secrets.UCPA_PASSWORD }}
+        run: |
+          python padel_booker.py "${{ github.event.inputs.chosen_day }}" "${{ github.event.inputs.wellpass_code }}"
 
-  <div class="card">
-    <h2>1. Choisis ton jour</h2>
-    <div class="day-grid" id="dayGrid">
-      {% for day, date in days.items() %}
-      <div class="day-btn" onclick="selectDay('{{ day }}')" id="btn_{{ day }}">
-        {{ day }}
-        <div class="date">{{ date }}</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>2. Code egym Wellpass</h2>
-    <label>Ton code du jour</label>
-    <input type="text" id="wellpassCode" placeholder="Ex: 123456" autocomplete="off" autocorrect="off" spellcheck="false">
-  </div>
-
-  <button class="btn-reserve" id="reserveBtn" onclick="reserve()" disabled>
-    Réserver
-  </button>
-
-  <div id="statusBox" class="status-box" style="display:none"></div>
-  <div id="resultBox"></div>
-
-  <script>
-    let selectedDay = null;
-    const dates = {{ dates_json | safe }};
-
-    function selectDay(day) {
-      document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
-      document.getElementById('btn_' + day).classList.add('selected');
-      selectedDay = day;
-      checkReady();
-    }
-
-    document.getElementById('wellpassCode').addEventListener('input', checkReady);
-
-    function checkReady() {
-      const code = document.getElementById('wellpassCode').value.trim();
-      document.getElementById('reserveBtn').disabled = !(selectedDay && code.length > 3);
-    }
-
-    function reserve() {
-      const code = document.getElementById('wellpassCode').value.trim();
-      if (!selectedDay || !code) return;
-
-      const btn = document.getElementById('reserveBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span>Réservation en cours…';
-
-      const statusBox = document.getElementById('statusBox');
-      statusBox.style.display = 'block';
-      statusBox.textContent = 'Démarrage…';
-      document.getElementById('resultBox').innerHTML = '';
-
-      fetch('/reserve', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({day: selectedDay, code: code})
-      }).then(r => r.json()).then(data => {
-        btn.innerHTML = 'Réserver';
-        checkReady();
-        if (data.success) {
-          document.getElementById('resultBox').innerHTML = '<div class="result-ok">✅ ' + data.message + '</div>';
-        } else {
-          document.getElementById('resultBox').innerHTML = '<div class="result-err">⚠️ ' + data.message + '</div>';
-        }
-      }).catch(err => {
-        btn.innerHTML = 'Réserver';
-        checkReady();
-        document.getElementById('resultBox').innerHTML = '<div class="result-err">❌ Erreur réseau</div>';
-      });
-
-      // Polling du log
-      pollStatus();
-    }
-
-    function pollStatus() {
-      fetch('/status').then(r => r.json()).then(data => {
-        const box = document.getElementById('statusBox');
-        if (data.log && data.log.length) {
-          box.textContent = data.log.join('\n');
-          box.scrollTop = box.scrollHeight;
-        }
-        if (data.running) setTimeout(pollStatus, 1500);
-      });
-    }
-  </script>
-</body>
-</html>
-"""
-
-@app.route("/")
-def index():
-    week_dates = next_week_dates()
-    days = {d: week_dates[d].strftime("%d/%m") for d in TARGET_DAYS}
-    import json as _json
-    return render_template_string(
-        HTML,
-        days=days,
-        dates_json=_json.dumps({d: week_dates[d].strftime("%d/%m/%Y") for d in TARGET_DAYS})
-    )
-
-@app.route("/reserve", methods=["POST"])
-def reserve():
-    global reservation_status
-    data = request.get_json()
-    chosen_day   = data.get("day", "")
-    wellpass_code = data.get("code", "")
-
-    if reservation_status["running"]:
-        return jsonify({"success": False, "message": "Une réservation est déjà en cours."})
-
-    reservation_status = {"running": True, "result": None, "log": ["Démarrage du navigateur…"]}
-
-    def do_reserve():
-        global reservation_status
-        try:
-            result = run(wellpass_code=wellpass_code, chosen_day=chosen_day)
-            reservation_status["result"] = result
-        except Exception as e:
-            reservation_status["result"] = {"success": False, "message": str(e)}
-        finally:
-            reservation_status["running"] = False
-
-    t = threading.Thread(target=do_reserve, daemon=True)
-    t.start()
-    t.join()  # Attendre la fin avant de répondre
-
-    return jsonify(reservation_status["result"] or {"success": False, "message": "Erreur inconnue."})
-
-@app.route("/status")
-def status():
-    return jsonify({
-        "running": reservation_status["running"],
-        "log":     reservation_status["log"],
-    })
-
-if __name__ == "__main__":
-    import socket
-    hostname = socket.gethostname()
-    local_ip = socket.gethostbyname(hostname)
-    print(f"\n🎾 UCPA Padel Booker démarré !")
-    print(f"   Ouvre Safari sur ton iPhone et va sur :")
-    print(f"   http://{local_ip}:5000\n")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: confirmation-screenshot
+          path: /tmp/ucpa_confirmation.png
+          if-no-files-found: ignore
