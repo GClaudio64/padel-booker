@@ -1,0 +1,51 @@
+name: Padel Booker
+
+on:
+  workflow_dispatch:
+    inputs:
+      chosen_day:
+        description: 'Jour (Lundi/Mardi/Mercredi/Jeudi)'
+        required: true
+        type: choice
+        options:
+          - Lundi
+          - Mardi
+          - Mercredi
+          - Jeudi
+      wellpass_code:
+        description: 'Code egym Wellpass'
+        required: true
+        type: string
+
+jobs:
+  reserver:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run booker
+        env:
+          UCPA_EMAIL: ${{ secrets.UCPA_EMAIL }}
+          UCPA_PASSWORD: ${{ secrets.UCPA_PASSWORD }}
+        run: |
+          python padel_booker.py "${{ github.event.inputs.chosen_day }}" "${{ github.event.inputs.wellpass_code }}"
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: confirmation-screenshot
+          path: /tmp/ucpa_confirmation.png
+          if-no-files-found: ignore
