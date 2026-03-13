@@ -1,18 +1,12 @@
 import os
 import sys
 import json
-from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
 UCPA_URL = "https://www.ucpa.com/sport-station/paris-19/mon-terrain-padel"
 LOGIN_URL = "https://www.ucpa.com/af/sso/login?context=alpha"
 UCPA_EMAIL = os.environ.get("UCPA_EMAIL", "")
 UCPA_PASSWORD = os.environ.get("UCPA_PASSWORD", "")
-PARTICIPANT_FIRST = "Guillaume"
-PARTICIPANT_LAST = "Fourcade"
-TARGET_DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi"]
-TARGET_TIME = "07:00"
-PREFERRED_COURT = "7"
 
 def log(msg):
     print(f"[UCPA] {msg}", flush=True)
@@ -20,42 +14,42 @@ def log(msg):
 def run(wellpass_code, chosen_day):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_context().new_page()
+        page = browser.new_context(viewport={"width": 1280, "height": 800}).new_page()
 
-        log("Chargement de la page UCPA...")
-        page.goto(UCPA_URL, wait_until="networkidle", timeout=30000)
+        log("Chargement page UCPA...")
+        page.goto(UCPA_URL, wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(3000)
+        page.screenshot(path="/tmp/ucpa_confirmation.png")
+        log("Screenshot initial pris.")
 
-        if page.locator("a:has-text('Login'), a:has-text('Se connecter')").count() > 0:
-            log("Connexion en cours...")
-            page.goto(LOGIN_URL, wait_until="networkidle", timeout=30000)
-            page.fill("input[type='email']", UCPA_EMAIL)
-            page.fill("input[type='password']", UCPA_PASSWORD)
-            page.click("button[type='submit']")
-            page.wait_for_load_state("networkidle", timeout=20000)
-            page.goto(UCPA_URL, wait_until="networkidle", timeout=30000)
-            log("Connecte.")
+        # Dump HTML pour analyser la structure de login
+        html = page.content()
+        log("=== HTML (premiers 2000 chars) ===")
+        log(html[:2000])
 
-        # Screenshot page initiale
-        page.screenshot(path="/tmp/ucpa_01_initial.png")
+        # Chercher tous les inputs
+        inputs = page.locator("input").all()
+        log(f"=== {len(inputs)} INPUT(S) TROUVÉS ===")
+        for i, inp in enumerate(inputs):
+            try:
+                t = inp.get_attribute("type") or "?"
+                n = inp.get_attribute("name") or "?"
+                p2 = inp.get_attribute("placeholder") or "?"
+                log(f"  input[{i}] type={t} name={n} placeholder={p2}")
+            except:
+                pass
 
-        log("Navigation vers la semaine suivante...")
-        try:
-            next_btn = page.locator("button:has-text('›'), button:has-text('>'), [class*='next'], [aria-label*='suivant']").first
-            next_btn.click()
-            page.wait_for_timeout(3000)
-        except Exception as e:
-            log(f"Erreur navigation: {e}")
-
-        page.screenshot(path="/tmp/ucpa_02_nextweek.png")
-        log("Screenshot semaine suivante pris.")
-
-        # Dump du contenu pour analyse
-        content = page.inner_text("body")
-        log("=== CONTENU PAGE ===")
-        log(content[:3000])
+        # Chercher liens de login
+        links = page.locator("a").all()
+        log(f"=== LIENS ===")
+        for lnk in links[:20]:
+            try:
+                log(f"  {lnk.inner_text().strip()} -> {lnk.get_attribute('href')}")
+            except:
+                pass
 
         browser.close()
-        return {"success": False, "message": "Analyse en cours - consultez les logs"}
+        return {"success": False, "message": "Analyse - voir logs"}
 
 if __name__ == "__main__":
     chosen_day = sys.argv[1] if len(sys.argv) > 1 else "Lundi"
