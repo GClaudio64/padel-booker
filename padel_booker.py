@@ -292,9 +292,9 @@ def check_availability(session: requests.Session, target_date: datetime) -> dict
     ts_start = ts_paris_ms(target_date, 7, 0)
     ts_end   = ts_paris_ms(target_date, 8, 0) - 1000
 
-    # Les deux terrains en parallèle
-    code_activites = ",".join(str(t["codeActivite"]) for t in TERRAINS.values())
-    code_creneaux  = ",".join(t["codeCreneau"] for t in TERRAINS.values())
+    # Ordre exact du HAR : terrain 6 en premier, terrain 7 en second
+    code_activites = "103423129,103423206"
+    code_creneaux  = "461643140,461646364"
 
     url = (
         f"{BASE_URL}/loisirs-reservation/api/info/session/products"
