@@ -300,6 +300,8 @@ def check_availability(session: requests.Session, target_date: datetime) -> dict
         f"{BASE_URL}/loisirs-reservation/api/info/session/products"
         f"/{code_activites}/{code_creneaux}/{ts_start}/{ts_end}/{WORKSPACE}"
     )
+    log.info(f"URL: {url}")
+    log.info(f"ts_start={ts_start} ts_end={ts_end}")
     data = api_get(session, url, label="session/products")
     log.info(f"Réponse API brute: {json.dumps(data)[:500]}")
 
