@@ -301,6 +301,7 @@ def check_availability(session: requests.Session, target_date: datetime) -> dict
         f"/{code_activites}/{code_creneaux}/{ts_start}/{ts_end}/{WORKSPACE}"
     )
     data = api_get(session, url, label="session/products")
+    log.info(f"Réponse API brute: {json.dumps(data)[:500]}")
 
     if not isinstance(data, list) or len(data) == 0:
         raise RuntimeError("Aucune session retournée par l'API")
