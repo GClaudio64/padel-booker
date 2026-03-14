@@ -283,56 +283,97 @@ def get_user_info(session: requests.Session) -> dict:
 
 def check_availability(session: requests.Session, target_date: datetime) -> dict:
     """
-    Interroge l'API session/products pour la date cible à 7h.
-    Retourne le terrain dispo (préférence terrain 7, sinon 6).
-    Raise si aucun créneau disponible.
+    1. Appelle areas-offers/weekly pour obtenir les codeCreneau dynamiques de la semaine cible.
+    2. Extrait les codes du creneau 07h00 du jour cible.
+    3. Appelle session/products avec ces codes dynamiques.
+    Retourne le terrain dispo (preference terrain 7, sinon 6).
     """
-    log.info(f"Vérification disponibilité pour le {target_date.strftime('%d/%m/%Y')} à 07:00...")
+    log.info(f"Verification disponibilite pour le {target_date.strftime('%d/%m/%Y')} a 07:00...")
 
     ts_start = ts_paris_ms(target_date, 7, 0)
     ts_end   = ts_paris_ms(target_date, 8, 0) - 1000
 
-    # Ordre exact du HAR : terrain 6 en premier, terrain 7 en second
-    code_activites = "103423129,103423206"
-    code_creneaux  = "461643140,461646364"
-
-    url = (
-        f"{BASE_URL}/loisirs-reservation/api/info/session/products"
-        f"/{code_activites}/{code_creneaux}/{ts_start}/{ts_end}/{WORKSPACE}"
+    # ── Etape A : recuperer le planning hebdomadaire pour avoir les codeCreneau dynamiques
+    monday_str = monday_of_week(target_date)  # format "JJ-MM-AAAA"
+    weekly_url = (
+        f"{BASE_URL}/sport-station/api/areas-offers/weekly/{WORKSPACE}"
+        f"?reservationPeriod=1"
+        f"&espace={ESPACE_UUID}"
+        f"&time={monday_str}"
+        f"&__amp_source_origin={BASE_URL}"
     )
-    log.info(f"URL: {url}")
-    log.info(f"ts_start={ts_start} ts_end={ts_end}")
-    data = api_get(session, url, label="session/products")
-    log.info(f"Réponse API brute: {json.dumps(data)[:500]}")
+    log.info(f"Planning hebdo -> {weekly_url}")
+    weekly_data = api_get(session, weekly_url, label="areas-offers/weekly")
+
+    # Chercher le creneau 07h00 du jour cible par timestamp
+    creneau_codes  = None
+    activity_codes = None
+    planner_columns = weekly_data.get("planner", {}).get("columns", [])
+    for column in planner_columns:
+        for item in column.get("items", []):
+            if item.get("start_time") == ts_start and item.get("startTime") == "07h00":
+                creneau_codes  = item["codes"]           # ex: ["461646366", "461643142"]
+                activity_codes = item["activity_codes"]  # ex: ["103423206", "103423129"]
+                log.info(f"Creneau trouve -> codes={creneau_codes} / activites={activity_codes}")
+                break
+        if creneau_codes:
+            break
+
+    if not creneau_codes:
+        raise RuntimeError(
+            f"Creneau 07h00 introuvable dans le planning pour le {target_date.strftime('%d/%m/%Y')} "
+            f"(ts_start={ts_start}). La semaine est peut-etre fermee ou non encore publiee."
+        )
+
+    # ── Etape B : appeler session/products avec les codes dynamiques
+    # Trier par activity_code pour avoir un ordre reproductible (103423129 < 103423206)
+    pairs = list(zip(activity_codes, creneau_codes))
+    pairs_sorted = sorted(pairs, key=lambda x: str(x[0]))
+    acts  = ",".join(str(p[0]) for p in pairs_sorted)
+    crens = ",".join(str(p[1]) for p in pairs_sorted)
+
+    products_url = (
+        f"{BASE_URL}/loisirs-reservation/api/info/session/products"
+        f"/{acts}/{crens}/{ts_start}/{ts_end}/{WORKSPACE}"
+    )
+    log.info(f"Session products -> {products_url}")
+    data = api_get(session, products_url, label="session/products")
+    log.info(f"Reponse session/products: {json.dumps(data)[:300]}")
 
     if not isinstance(data, list) or len(data) == 0:
-        raise RuntimeError("Aucune session retournée par l'API")
+        raise RuntimeError(
+            f"session/products a retourne [] pour le {target_date.strftime('%d/%m/%Y')} "
+            f"a 07:00. codes={creneau_codes}"
+        )
 
-    # Parser les sessions disponibles (placesDisponibles > 0)
-    item = data[0]
-    sessions = item.get("sessions", [])
-    log.info(f"Sessions trouvées: {len(sessions)}")
-
+    # ── Etape C : selectionner le terrain disponible
+    sessions = data[0].get("sessions", [])
+    log.info(f"Sessions trouvees: {len(sessions)}")
     dispo = {}
     for s in sessions:
-        nom = s.get("nomActivite", "")
+        nom    = s.get("nomActivite", "")
         places = s.get("placesDisponibles", 0)
         statut = s.get("statut", 1)
         log.info(f"  {nom}: {places} place(s), statut={statut}")
         if places > 0 and statut == 0:
             for num, terrain in TERRAINS.items():
                 if str(terrain["codeActivite"]) == str(s["codeActivite"]):
-                    dispo[num] = {**terrain, "session_data": s}
+                    # Injecter le codeCreneau DYNAMIQUE dans l'objet terrain
+                    dispo[num] = {
+                        **terrain,
+                        "codeCreneau": s["codeCreneau"],  # code dynamique de la semaine
+                        "session_data": s,
+                    }
 
     if not dispo:
         raise RuntimeError(
-            f"Aucun créneau disponible le {target_date.strftime('%d/%m/%Y')} à 07:00"
+            f"Aucun creneau disponible le {target_date.strftime('%d/%m/%Y')} a 07:00 "
+            f"(terrains complets ou fermes)"
         )
 
-    # Choisir terrain préféré sinon premier disponible
     chosen_num = PREFERRED_TERRAIN if PREFERRED_TERRAIN in dispo else next(iter(dispo))
-    chosen = dispo[chosen_num]
-    log.info(f"✓ Terrain {chosen_num} disponible ({chosen['nom_session']})")
+    chosen     = dispo[chosen_num]
+    log.info(f"Terrain {chosen_num} selectionne ({chosen['nom_session']}, codeCreneau={chosen['codeCreneau']})")
     return {"terrain": chosen, "terrain_num": chosen_num, "ts_start": ts_start, "ts_end": ts_end}
 
 
