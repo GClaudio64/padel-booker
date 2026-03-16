@@ -283,18 +283,25 @@ def get_user_info(session: requests.Session) -> dict:
 
 def check_availability(session: requests.Session, target_date: datetime) -> dict:
     """
-    1. Appelle areas-offers/weekly pour obtenir les codeCreneau dynamiques de la semaine cible.
-    2. Extrait les codes du creneau 07h00 du jour cible.
-    3. Appelle session/products avec ces codes dynamiques.
-    Retourne le terrain dispo (preference terrain 7, sinon 6).
+    1. Appelle areas-offers/weekly (API publique, sans auth) pour obtenir
+       les codeCreneau DYNAMIQUES de la semaine contenant target_date.
+    2. Identifie le créneau 07h00 du jour cible par startDate + startTime
+       (plus robuste que par ts_start recalculé).
+    3. Utilise ts_start / ts_end directement depuis la réponse weekly.
+    4. Appelle session/products avec les codes dynamiques (auth requise).
+    Retourne le terrain dispo (préférence terrain 7, sinon 6).
     """
-    log.info(f"Verification disponibilite pour le {target_date.strftime('%d/%m/%Y')} a 07:00...")
+    target_date_str = target_date.strftime("%d/%m/%Y")   # ex: "19/03/2026"
+    monday_str = monday_of_week(target_date)              # ex: "16-03-2026"
 
-    ts_start = ts_paris_ms(target_date, 7, 0)
-    ts_end   = ts_paris_ms(target_date, 8, 0) - 1000
+    log.info(
+        f"Vérification disponibilité pour le {target_date_str} à 07:00 "
+        f"(semaine du lundi {monday_str})..."
+    )
 
-    # ── Etape A : recuperer le planning hebdomadaire pour avoir les codeCreneau dynamiques
-    monday_str = monday_of_week(target_date)  # format "JJ-MM-AAAA"
+    # ── Étape A : planning hebdomadaire ──────────────────────────────────────
+    # Cette API est PUBLIQUE : elle répond 200 sans cookies d'authentification.
+    # Le paramètre time= attend le lundi de la semaine cible au format JJ-MM-AAAA.
     weekly_url = (
         f"{BASE_URL}/sport-station/api/areas-offers/weekly/{WORKSPACE}"
         f"?reservationPeriod=1"
@@ -302,53 +309,86 @@ def check_availability(session: requests.Session, target_date: datetime) -> dict
         f"&time={monday_str}"
         f"&__amp_source_origin={BASE_URL}"
     )
-    log.info(f"Planning hebdo -> {weekly_url}")
+    log.info(f"Planning hebdo → {weekly_url}")
     weekly_data = api_get(session, weekly_url, label="areas-offers/weekly")
 
-    # Chercher le creneau 07h00 du jour cible par timestamp
-    creneau_codes  = None
-    activity_codes = None
-    planner_columns = weekly_data.get("planner", {}).get("columns", [])
-    for column in planner_columns:
+    # ── Étape B : localiser le créneau 07h00 du jour cible ───────────────────
+    # Recherche par startDate (ex: "19/03/2026") + startTime ("07h00").
+    # On N'utilise PAS ts_start recalculé car tout écart d'une seconde
+    # entre le ts recalculé et le ts de l'API rend session/products vide.
+    creneau_item = None
+    for column in weekly_data.get("planner", {}).get("columns", []):
         for item in column.get("items", []):
-            if item.get("start_time") == ts_start and item.get("startTime") == "07h00":
-                creneau_codes  = item["codes"]           # ex: ["461646366", "461643142"]
-                activity_codes = item["activity_codes"]  # ex: ["103423206", "103423129"]
-                log.info(f"Creneau trouve -> codes={creneau_codes} / activites={activity_codes}")
+            if (
+                item.get("startDate") == target_date_str
+                and item.get("startTime") == "07h00"
+            ):
+                creneau_item = item
                 break
-        if creneau_codes:
+        if creneau_item:
             break
 
-    if not creneau_codes:
+    if not creneau_item:
         raise RuntimeError(
-            f"Creneau 07h00 introuvable dans le planning pour le {target_date.strftime('%d/%m/%Y')} "
-            f"(ts_start={ts_start}). La semaine est peut-etre fermee ou non encore publiee."
+            f"Créneau 07h00 introuvable dans le planning pour le {target_date_str}. "
+            f"La semaine est peut-être fermée ou non encore publiée "
+            f"(lundi cherché : {monday_str})."
         )
 
-    # ── Etape B : appeler session/products avec les codes dynamiques
-    # Trier par activity_code pour avoir un ordre reproductible (103423129 < 103423206)
-    pairs = list(zip(activity_codes, creneau_codes))
-    pairs_sorted = sorted(pairs, key=lambda x: str(x[0]))
-    acts  = ",".join(str(p[0]) for p in pairs_sorted)
-    crens = ",".join(str(p[1]) for p in pairs_sorted)
+    if creneau_item.get("isDisabled") or creneau_item.get("stock", 0) == 0:
+        raise RuntimeError(
+            f"Créneau 07h00 du {target_date_str} indisponible "
+            f"(stock={creneau_item.get('stock')}, "
+            f"isDisabled={creneau_item.get('isDisabled')})."
+        )
 
+    # ── Étape C : timestamps directs depuis weekly ────────────────────────────
+    # On prend start_time / end_time tels que retournés par l'API weekly.
+    # Ces valeurs sont garanties cohérentes avec les codes dynamiques du créneau.
+    ts_start = creneau_item["start_time"]   # ex: 1773900000000
+    ts_end   = creneau_item["end_time"]     # ex: 1773903599000
+    log.info(f"  ts_start={ts_start} ({creneau_item.get('startTime')}) "
+             f"ts_end={ts_end} ({creneau_item.get('endTime')})")
+
+    # ── Étape D : mapping activity_code[i] ↔ creneau_code[i] ────────────────
+    # L'ordre dans activity_codes[] et codes[] est cohérent index à index,
+    # MAIS l'ordre absolu varie d'un jour à l'autre (p.ex. 103423129 n'est
+    # pas toujours en index 0). On trie par activity_code (str) pour obtenir
+    # une URL reproductible et éviter les inversions.
+    act_codes  = [str(a) for a in creneau_item.get("activity_codes", [])]
+    cren_codes = [str(c) for c in creneau_item.get("codes", [])]
+
+    if not act_codes or not cren_codes or len(act_codes) != len(cren_codes):
+        raise RuntimeError(
+            f"Mapping activity_codes/codes invalide dans la réponse weekly : "
+            f"activity_codes={act_codes}, codes={cren_codes}"
+        )
+
+    pairs = sorted(zip(act_codes, cren_codes), key=lambda x: x[0])
+    acts  = ",".join(p[0] for p in pairs)
+    crens = ",".join(p[1] for p in pairs)
+    log.info(f"  Codes dynamiques : activités=[{acts}] | créneaux=[{crens}]")
+
+    # ── Étape E : session/products (nécessite auth) ───────────────────────────
     products_url = (
         f"{BASE_URL}/loisirs-reservation/api/info/session/products"
         f"/{acts}/{crens}/{ts_start}/{ts_end}/{WORKSPACE}"
     )
-    log.info(f"Session products -> {products_url}")
+    log.info(f"Session products → {products_url}")
     data = api_get(session, products_url, label="session/products")
-    log.info(f"Reponse session/products: {json.dumps(data)[:300]}")
+    log.info(f"Réponse session/products : {json.dumps(data)[:300]}")
 
     if not isinstance(data, list) or len(data) == 0:
         raise RuntimeError(
-            f"session/products a retourne [] pour le {target_date.strftime('%d/%m/%Y')} "
-            f"a 07:00. codes={creneau_codes}"
+            f"session/products a retourné [] pour le {target_date_str} à 07:00. "
+            f"Codes : activités=[{acts}] créneaux=[{crens}]. "
+            f"Vérifier les cookies d'authentification."
         )
 
-    # ── Etape C : selectionner le terrain disponible
+    # ── Étape F : sélectionner le terrain disponible ─────────────────────────
     sessions = data[0].get("sessions", [])
-    log.info(f"Sessions trouvees: {len(sessions)}")
+    log.info(f"Sessions trouvées : {len(sessions)}")
+
     dispo = {}
     for s in sessions:
         nom    = s.get("nomActivite", "")
@@ -357,27 +397,33 @@ def check_availability(session: requests.Session, target_date: datetime) -> dict
         log.info(f"  {nom}: {places} place(s), statut={statut}")
         if places > 0 and statut == 0:
             for num, terrain in TERRAINS.items():
-                if str(terrain["codeActivite"]) == str(s["codeActivite"]):
-                    # Injecter le codeCreneau DYNAMIQUE dans l'objet terrain
+                if str(terrain["codeActivite"]) == str(s.get("codeActivite")):
+                    # codeCreneau injecté depuis la réponse weekly (dynamique)
                     dispo[num] = {
                         **terrain,
-                        "codeCreneau": s["codeCreneau"],  # code dynamique de la semaine
+                        "codeCreneau": s.get("codeCreneau"),
                         "session_data": s,
                     }
 
     if not dispo:
         raise RuntimeError(
-            f"Aucun creneau disponible le {target_date.strftime('%d/%m/%Y')} a 07:00 "
-            f"(terrains complets ou fermes)"
+            f"Aucun créneau disponible le {target_date_str} à 07:00 "
+            f"(terrains complets ou fermés)."
         )
 
     chosen_num = PREFERRED_TERRAIN if PREFERRED_TERRAIN in dispo else next(iter(dispo))
-    chosen     = dispo[chosen_num]
-    log.info(f"Terrain {chosen_num} selectionne ({chosen['nom_session']}, codeCreneau={chosen['codeCreneau']})")
-    return {"terrain": chosen, "terrain_num": chosen_num, "ts_start": ts_start, "ts_end": ts_end}
+    chosen = dispo[chosen_num]
+    log.info(
+        f"✓ Terrain {chosen_num} sélectionné : "
+        f"{chosen['nom_session']}, codeCreneau={chosen['codeCreneau']}"
+    )
 
-
-# ── Étape 5 : Valider le code Wellpass ─────────────────────────────────────────
+    return {
+        "terrain":     chosen,
+        "terrain_num": chosen_num,
+        "ts_start":    ts_start,
+        "ts_end":      ts_end,
+    }
 
 def validate_wellpass(session: requests.Session, wellpass_code: str, user: dict,
                        ts_start: int, ts_end: int) -> None:
