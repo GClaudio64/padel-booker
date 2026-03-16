@@ -52,11 +52,7 @@
       color: #546e7a;
       margin-top: 4px;
     }
-    .day-btn.selected {
-      border-color: #29b6f6;
-      background: #0d2438;
-      color: #fff;
-    }
+    .day-btn.selected { border-color: #29b6f6; background: #0d2438; color: #fff; }
     .day-btn.selected .date-label { color: #4fc3f7; }
     .day-btn:active { transform: scale(0.97); }
     .input-field {
@@ -112,7 +108,7 @@
     .status.loading { background: #0d2438; border: 1px solid #1e3248; color: #4fc3f7; }
     .status.success { background: #0a2e1a; border: 1px solid #2e7d32; color: #81c784; }
     .status.error   { background: #2e0a0a; border: 1px solid #7d2e2e; color: #ef9a9a; }
-    .status.info    { background: #0d2438; border: 1px solid #1e3248; color: #90caf9; }
+    .status.warning { background: #2e2200; border: 1px solid #7d5a00; color: #ffcc02; }
     .spinner {
       display: inline-block;
       width: 20px; height: 20px;
@@ -124,6 +120,15 @@
       margin-right: 8px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-steps {
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: #546e7a;
+      text-align: left;
+    }
+    .progress-steps div { padding: 3px 0; }
+    .progress-steps .done { color: #4fc3f7; }
+    .progress-steps .current { color: #fff; }
     .run-link {
       display: block;
       text-align: center;
@@ -184,11 +189,12 @@
 </a>
 
 <script>
-  const REPO_OWNER = "GClaudio64";
-  const REPO_NAME  = "padel-booker";
+  const REPO_OWNER  = "GClaudio64";
+  const REPO_NAME   = "padel-booker";
   const WORKFLOW_ID = "padel_booker.yml";
 
   const DAYS = ["Lundi","Mardi","Mercredi","Jeudi"];
+
   function nextWeekDates() {
     const today = new Date();
     const dow = today.getDay();
@@ -201,6 +207,7 @@
       return { name, date: d };
     });
   }
+
   function fmt(d) {
     return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
   }
@@ -244,7 +251,7 @@
   }
 
   function checkReady() {
-    const code = document.getElementById('wellpassCode').value.trim();
+    const code  = document.getElementById('wellpassCode').value.trim();
     const token = getToken();
     document.getElementById('reserveBtn').disabled = !(selectedDay && code.length > 2 && token.length > 10);
   }
@@ -253,6 +260,169 @@
     document.getElementById('tokenSection').classList.toggle('visible');
   }
 
+  // ── Polling du résultat ────────────────────────────────────────────────────
+
+  async function getLatestRunId(token, after) {
+    // Récupère le run le plus récent déclenché après `after` (timestamp ms)
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?per_page=5&event=workflow_dispatch`;
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    const data = await r.json();
+    const runs = (data.workflow_runs || []).filter(run => {
+      const created = new Date(run.created_at).getTime();
+      return created >= after - 5000; // 5s de marge
+    });
+    return runs.length > 0 ? runs[0] : null;
+  }
+
+  async function pollRunResult(token, triggeredAt, runLink) {
+    const maxWait  = 3 * 60 * 1000; // 3 minutes max
+    const interval = 5000;           // poll toutes les 5s
+    const start    = Date.now();
+
+    let run = null;
+
+    // Étape 1 : attendre que le run apparaisse (jusqu'à 20s)
+    setProgress(['⏳ Démarrage du runner…', '⏸ En attente…', '⏸ Vérification du résultat…']);
+    for (let i = 0; i < 8; i++) {
+      await sleep(interval);
+      run = await getLatestRunId(token, triggeredAt);
+      if (run) break;
+    }
+
+    if (!run) {
+      showStatus('error', '❌ Impossible de trouver le run GitHub Actions.<br>Vérifie manuellement sur GitHub.');
+      return;
+    }
+
+    // Mettre à jour le lien
+    document.getElementById('runLink').href = run.html_url;
+    document.getElementById('runLink').style.display = 'block';
+
+    // Étape 2 : attendre la fin du run
+    setProgress(['✅ Runner démarré', '⏳ Script en cours (~1 min)…', '⏸ Vérification du résultat…']);
+    while (Date.now() - start < maxWait) {
+      await sleep(interval);
+      const r = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${run.id}`,
+        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
+      );
+      const runData = await r.json();
+
+      if (runData.status === 'completed') {
+        setProgress(['✅ Runner démarré', '✅ Script terminé', '⏳ Lecture du résultat…']);
+        await sleep(2000);
+        await readRunResult(token, run.id, runData.conclusion);
+        return;
+      }
+    }
+
+    showStatus('warning', '⚠️ Timeout — le script a pris trop de temps.<br>Vérifie le résultat sur GitHub Actions.');
+  }
+
+  async function readRunResult(token, runId, conclusion) {
+    // Récupérer les logs du job pour extraire le message final
+    try {
+      const jobsR = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${runId}/jobs`,
+        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
+      );
+      const jobsData = await jobsR.json();
+      const job = (jobsData.jobs || [])[0];
+
+      if (!job) throw new Error('Job introuvable');
+
+      // Chercher le step "Run booker" et son output
+      const runStep = (job.steps || []).find(s => s.name === 'Run booker');
+      const stepConclusion = runStep ? runStep.conclusion : conclusion;
+
+      if (conclusion === 'success') {
+        showStatus('success',
+          `✅ <strong>Réservation confirmée !</strong><br><br>` +
+          `${selectedDay} 7h00–8h00 · Terrain 7<br>` +
+          `<small style="color:#4fc3f7">Vérifie ta boîte mail pour la confirmation UCPA.</small>`
+        );
+      } else {
+        // Essayer de lire le message d'erreur depuis les logs
+        const msg = await getErrorFromLogs(token, runId);
+        showStatus('error', `❌ <strong>Échec de la réservation</strong><br><br>${msg}`);
+      }
+    } catch(e) {
+      // Fallback sur la conclusion brute
+      if (conclusion === 'success') {
+        showStatus('success', '✅ Réservation confirmée !');
+      } else {
+        showStatus('error', `❌ Échec (${conclusion})<br>Vérifie les logs GitHub Actions.`);
+      }
+    }
+    setProgress(null);
+  }
+
+  async function getErrorFromLogs(token, runId) {
+    // Télécharger les logs du run pour extraire le message d'erreur
+    try {
+      const r = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${runId}/logs`,
+        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
+      );
+      // Les logs sont un zip — on ne peut pas les lire directement depuis le browser
+      // On cherche dans le résultat JSON du script à la place
+      return getLoglinesFromJobs(token, runId);
+    } catch(e) {
+      return 'Consulte les logs GitHub Actions pour le détail.';
+    }
+  }
+
+  async function getLoglinesFromJobs(token, runId) {
+    // Lire les annotations du run (contiennent souvent le message d'erreur)
+    try {
+      const r = await fetch(
+        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${runId}/jobs`,
+        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
+      );
+      const data = await r.json();
+      const job = (data.jobs || [])[0];
+      if (!job) return 'Erreur inconnue.';
+
+      // Chercher dans les steps le message d'erreur
+      const failedStep = (job.steps || []).find(s => s.conclusion === 'failure');
+      if (failedStep) {
+        // Messages d'erreur connus
+        if (failedStep.name === 'Run booker') {
+          return 'Le script a échoué. Causes possibles :<br>• Code Wellpass invalide ou déjà utilisé<br>• Créneau non disponible<br>• Problème de connexion UCPA';
+        }
+        return `Étape "${failedStep.name}" a échoué.`;
+      }
+      return 'Erreur inconnue — vérifie les logs.';
+    } catch(e) {
+      return 'Impossible de lire le détail de l\'erreur.';
+    }
+  }
+
+  function setProgress(steps) {
+    if (!steps) {
+      const prog = document.getElementById('progressSteps');
+      if (prog) prog.remove();
+      return;
+    }
+    let prog = document.getElementById('progressSteps');
+    if (!prog) {
+      prog = document.createElement('div');
+      prog.id = 'progressSteps';
+      prog.className = 'progress-steps';
+      document.getElementById('statusBox').appendChild(prog);
+    }
+    prog.innerHTML = steps.map((s, i) => {
+      const cls = s.startsWith('✅') ? 'done' : s.startsWith('⏳') ? 'current' : '';
+      return `<div class="${cls}">${s}</div>`;
+    }).join('');
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ── Déclenchement ──────────────────────────────────────────────────────────
+
   async function reserve() {
     const code  = document.getElementById('wellpassCode').value.trim();
     const token = getToken();
@@ -260,7 +430,14 @@
 
     const btn = document.getElementById('reserveBtn');
     btn.disabled = true;
-    showStatus('loading', '<span class="spinner"></span>Déclenchement de la réservation…');
+    document.getElementById('runLink').style.display = 'none';
+
+    const triggeredAt = Date.now();
+
+    showStatus('loading',
+      `<span class="spinner"></span><strong>Réservation en cours…</strong><br>` +
+      `<small style="opacity:0.7">Le script tourne dans le cloud, résultat dans ~1–2 min.</small>`
+    );
 
     try {
       const resp = await fetch(
@@ -280,10 +457,8 @@
       );
 
       if (resp.status === 204) {
-        showStatus('success', `✅ Réservation lancée pour <strong>${selectedDay} 7h–8h</strong> !<br><br>Le script tourne dans le cloud (~2 min).<br>Vérifie le résultat sur GitHub Actions.`);
-        const runUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW_ID}`;
-        document.getElementById('runLink').href = runUrl;
-        document.getElementById('runLink').style.display = 'block';
+        // Déclenché — on poll le résultat
+        await pollRunResult(token, triggeredAt, null);
       } else {
         const err = await resp.json().catch(() => ({}));
         showStatus('error', `❌ Erreur ${resp.status}<br>${err.message || 'Vérifie ton token GitHub.'}`);
@@ -293,6 +468,8 @@
       showStatus('error', `❌ Erreur réseau<br>${e.message}`);
       btn.disabled = false;
     }
+
+    btn.disabled = false;
   }
 
   function showStatus(type, html) {
