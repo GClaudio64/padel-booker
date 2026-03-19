@@ -16,183 +16,85 @@
     .header { text-align: center; margin-bottom: 32px; }
     .header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; }
     .header p { color: #546e7a; font-size: 0.88rem; margin-top: 6px; }
-    .card {
-      background: #132033;
-      border-radius: 18px;
-      padding: 22px 18px;
-      margin-bottom: 14px;
-      border: 1px solid #1e3248;
-    }
-    .card-title {
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #4fc3f7;
-      margin-bottom: 16px;
-    }
+    .card { background: #132033; border-radius: 18px; padding: 22px 18px; margin-bottom: 14px; border: 1px solid #1e3248; }
+    .card-title { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #4fc3f7; margin-bottom: 16px; }
+    .card-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-title-row .card-title { margin-bottom: 0; }
+    .dispo-status { font-size: 0.72rem; color: #546e7a; }
+    .dispo-status.loading { color: #4fc3f7; }
+    .dispo-status.done    { color: #4caf50; }
     .day-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .day-btn {
-      padding: 16px 8px;
-      border-radius: 14px;
-      border: 2px solid #1e3248;
-      background: #0a1628;
-      color: #90a4ae;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.15s ease;
-      user-select: none;
-    }
-    .day-btn .date-label {
-      display: block;
-      font-size: 0.72rem;
-      font-weight: 400;
-      color: #546e7a;
-      margin-top: 4px;
-    }
+    .day-btn { padding: 14px 8px; border-radius: 14px; border: 2px solid #1e3248; background: #0a1628; color: #90a4ae; font-size: 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s ease; user-select: none; }
+    .day-btn .date-label { display: block; font-size: 0.72rem; font-weight: 400; color: #546e7a; margin-top: 3px; }
+    .day-btn .dispo-label { display: block; font-size: 0.72rem; font-weight: 500; margin-top: 5px; min-height: 14px; }
+    .day-btn.dispo-2 .dispo-label { color: #4caf50; }
+    .day-btn.dispo-1 .dispo-label { color: #ff9800; }
+    .day-btn.dispo-0 .dispo-label { color: #ef5350; }
     .day-btn.selected { border-color: #29b6f6; background: #0d2438; color: #fff; }
     .day-btn.selected .date-label { color: #4fc3f7; }
     .day-btn:active { transform: scale(0.97); }
-    .input-field {
-      width: 100%;
-      padding: 15px 16px;
-      background: #0a1628;
-      border: 1.5px solid #1e3248;
-      border-radius: 13px;
-      color: #fff;
-      font-size: 1.05rem;
-      outline: none;
-      -webkit-appearance: none;
-      letter-spacing: 1px;
-    }
+    .input-field { width: 100%; padding: 15px 16px; background: #0a1628; border: 1.5px solid #1e3248; border-radius: 13px; color: #fff; font-size: 1.05rem; outline: none; -webkit-appearance: none; letter-spacing: 1px; }
     .input-field:focus { border-color: #29b6f6; }
     .input-field::placeholder { color: #37474f; letter-spacing: 0; }
-    .config-toggle {
-      font-size: 0.78rem;
-      color: #546e7a;
-      text-align: center;
-      margin-bottom: 10px;
-      cursor: pointer;
-      text-decoration: underline;
-    }
+    .config-toggle { font-size: 0.78rem; color: #546e7a; text-align: center; margin-bottom: 10px; cursor: pointer; text-decoration: underline; }
     .token-section { display: none; }
     .token-section.visible { display: block; }
-    .btn-main {
-      width: 100%;
-      padding: 17px;
-      border-radius: 15px;
-      border: none;
-      background: linear-gradient(135deg, #0288d1 0%, #26c6da 100%);
-      color: #fff;
-      font-size: 1.1rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 6px;
-      letter-spacing: 0.2px;
-      transition: opacity 0.15s;
-    }
+    .btn-main { width: 100%; padding: 17px; border-radius: 15px; border: none; background: linear-gradient(135deg, #0288d1 0%, #26c6da 100%); color: #fff; font-size: 1.1rem; font-weight: 700; cursor: pointer; margin-top: 6px; letter-spacing: 0.2px; transition: opacity 0.15s; }
     .btn-main:disabled { background: #1e3248; color: #37474f; cursor: not-allowed; }
     .btn-main:not(:disabled):active { opacity: 0.85; transform: scale(0.99); }
-    .status {
-      margin-top: 18px;
-      padding: 16px;
-      border-radius: 14px;
-      font-size: 0.9rem;
-      line-height: 1.7;
-      text-align: center;
-      font-weight: 500;
-      display: none;
-    }
+    .status { margin-top: 18px; padding: 16px; border-radius: 14px; font-size: 0.9rem; line-height: 1.7; text-align: center; font-weight: 500; display: none; }
     .status.loading { background: #0d2438; border: 1px solid #1e3248; color: #4fc3f7; }
     .status.success { background: #0a2e1a; border: 1px solid #2e7d32; color: #81c784; }
     .status.error   { background: #2e0a0a; border: 1px solid #7d2e2e; color: #ef9a9a; }
     .status.warning { background: #2e2200; border: 1px solid #7d5a00; color: #ffcc02; }
-    .spinner {
-      display: inline-block;
-      width: 20px; height: 20px;
-      border: 3px solid rgba(79,195,247,0.2);
-      border-top-color: #4fc3f7;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 8px;
-    }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(79,195,247,0.2); border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+    .spinner-lg { width: 20px; height: 20px; border-width: 3px; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .progress-steps {
-      margin-top: 12px;
-      font-size: 0.78rem;
-      color: #546e7a;
-      text-align: left;
-    }
+    .progress-steps { margin-top: 12px; font-size: 0.78rem; color: #546e7a; text-align: left; }
     .progress-steps div { padding: 3px 0; }
-    .progress-steps .done { color: #4fc3f7; }
+    .progress-steps .done    { color: #4fc3f7; }
     .progress-steps .current { color: #fff; }
-    .run-link {
-      display: block;
-      text-align: center;
-      margin-top: 12px;
-      color: #4fc3f7;
-      font-size: 0.85rem;
-      text-decoration: none;
-    }
-    .week-info {
-      text-align: center;
-      font-size: 0.8rem;
-      color: #546e7a;
-      margin-bottom: 20px;
-    }
+    .run-link { display: block; text-align: center; margin-top: 12px; color: #4fc3f7; font-size: 0.85rem; text-decoration: none; }
+    .week-info { text-align: center; font-size: 0.8rem; color: #546e7a; margin-bottom: 20px; }
+    .dispo-updated { text-align: center; font-size: 0.72rem; color: #37474f; margin-top: -8px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
-
 <div class="header">
   <h1>🎾 Padel UCPA</h1>
   <p>Paris 19e · Créneau 7h–8h</p>
 </div>
-
-<p class="week-info" id="weekInfo">Semaine du <span id="weekRange">…</span></p>
-
+<p class="week-info">Semaine du <span id="weekRange">…</span></p>
+<p class="dispo-updated" id="dispoUpdated"></p>
 <div class="card">
-  <div class="card-title">1 · Choisis ton jour</div>
+  <div class="card-title-row">
+    <div class="card-title">1 · Choisis ton jour</div>
+    <div class="dispo-status loading" id="dispoStatus"><span class="spinner"></span>chargement…</div>
+  </div>
   <div class="day-grid" id="dayGrid"></div>
 </div>
-
 <div class="card">
   <div class="card-title">2 · Code egym Wellpass</div>
-  <input class="input-field" type="text" id="wellpassCode"
-    placeholder="Ton code du jour"
-    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <input class="input-field" type="text" id="wellpassCode" placeholder="Ton code du jour" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 </div>
-
 <p class="config-toggle" onclick="toggleToken()">⚙️ Config GitHub Token</p>
 <div class="token-section" id="tokenSection">
   <div class="card">
     <div class="card-title">GitHub Personal Access Token</div>
-    <input class="input-field" type="password" id="ghToken"
-      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-    <p style="font-size:0.75rem;color:#546e7a;margin-top:10px;">
-      Saisi une fois, sauvegardé dans ton navigateur.
-    </p>
+    <input class="input-field" type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <p style="font-size:0.75rem;color:#546e7a;margin-top:10px;">Saisi une fois, sauvegardé dans ton navigateur.</p>
   </div>
 </div>
-
-<button class="btn-main" id="reserveBtn" onclick="reserve()" disabled>
-  Réserver
-</button>
-
+<button class="btn-main" id="reserveBtn" onclick="reserve()" disabled>Réserver</button>
 <div class="status" id="statusBox"></div>
-<a class="run-link" id="runLink" href="#" target="_blank" style="display:none">
-  Voir le log GitHub Actions →
-</a>
+<a class="run-link" id="runLink" href="#" target="_blank" style="display:none">Voir le log GitHub Actions →</a>
 
 <script>
   const REPO_OWNER  = "GClaudio64";
   const REPO_NAME   = "padel-booker";
   const WORKFLOW_ID = "padel_booker.yml";
-
+  const DISPO_WF_ID = "check_dispo.yml";
+  const DISPO_JSON  = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/dispo.json`;
   const DAYS = ["Lundi","Mardi","Mercredi","Jeudi"];
 
   function nextWeekDates() {
@@ -201,28 +103,21 @@
     const daysUntilMon = dow === 0 ? 1 : (8 - dow);
     const mon = new Date(today);
     mon.setDate(today.getDate() + daysUntilMon);
-    return DAYS.map((name, i) => {
-      const d = new Date(mon);
-      d.setDate(mon.getDate() + i);
-      return { name, date: d };
-    });
+    return DAYS.map((name, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return { name, date: d }; });
   }
-
-  function fmt(d) {
-    return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
-  }
+  function fmt(d) { return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }); }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   let selectedDay = null;
   const weekDays = nextWeekDates();
-  document.getElementById('weekRange').textContent =
-    `${fmt(weekDays[0].date)} – ${fmt(weekDays[3].date)}`;
+  document.getElementById('weekRange').textContent = `${fmt(weekDays[0].date)} – ${fmt(weekDays[3].date)}`;
 
   const grid = document.getElementById('dayGrid');
   weekDays.forEach(({ name, date }) => {
     const btn = document.createElement('div');
     btn.className = 'day-btn';
     btn.id = 'btn_' + name;
-    btn.innerHTML = `${name}<span class="date-label">${fmt(date)}</span>`;
+    btn.innerHTML = `${name}<span class="date-label">${fmt(date)}</span><span class="dispo-label" id="dispo_${name}"></span>`;
     btn.onclick = () => selectDay(name);
     grid.appendChild(btn);
   });
@@ -234,250 +129,167 @@
     checkReady();
   }
 
+  function applyDispos(jours) {
+    DAYS.forEach(day => {
+      const info = jours[day];
+      if (!info) return;
+      const btn = document.getElementById('btn_' + day);
+      const label = document.getElementById('dispo_' + day);
+      const n = info.terrains;
+      btn.classList.remove('dispo-0','dispo-1','dispo-2');
+      if (n === 0)      { btn.classList.add('dispo-0'); label.textContent = '🔴 Complet'; }
+      else if (n === 1) { btn.classList.add('dispo-1'); label.textContent = '🟠 1 terrain'; }
+      else              { btn.classList.add('dispo-2'); label.textContent = `🟢 ${n} terrains`; }
+    });
+  }
+
+  async function loadExistingDispo() {
+    try {
+      const r = await fetch(DISPO_JSON + '?t=' + Date.now());
+      if (!r.ok) return null;
+      return await r.json();
+    } catch(e) { return null; }
+  }
+
+  function isDispoFresh(data) {
+    if (!data || !data.semaine || !data.jours) return false;
+    const expected = `${fmt(weekDays[0].date)} – ${fmt(weekDays[3].date)}`;
+    return data.semaine === expected;
+  }
+
+  async function triggerAndWaitDispo(token) {
+    const triggeredAt = Date.now();
+    const resp = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${DISPO_WF_ID}/dispatches`,
+      { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main' }) }
+    );
+    if (resp.status !== 204) throw new Error(`Erreur déclenchement: ${resp.status}`);
+    for (let i = 0; i < 20; i++) {
+      await sleep(5000);
+      const data = await loadExistingDispo();
+      if (data && isDispoFresh(data) && data.updated) {
+        const updatedAt = new Date(data.updated).getTime();
+        if (updatedAt >= triggeredAt - 10000) return data;
+      }
+    }
+    throw new Error('Timeout');
+  }
+
+  async function initDispo() {
+    const statusEl = document.getElementById('dispoStatus');
+    const existing = await loadExistingDispo();
+    if (existing && isDispoFresh(existing)) {
+      applyDispos(existing.jours);
+      statusEl.className = 'dispo-status done';
+      statusEl.textContent = '✓ à jour';
+      if (existing.updated) {
+        const d = new Date(existing.updated);
+        document.getElementById('dispoUpdated').textContent = `Mis à jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
+      }
+      return;
+    }
+    const token = getToken();
+    if (!token) { statusEl.className = 'dispo-status'; statusEl.textContent = '— dispos inconnues'; return; }
+    statusEl.innerHTML = '<span class="spinner"></span>mise à jour…';
+    try {
+      const data = await triggerAndWaitDispo(token);
+      applyDispos(data.jours);
+      statusEl.className = 'dispo-status done';
+      statusEl.textContent = '✓ à jour';
+      const d = new Date(data.updated);
+      document.getElementById('dispoUpdated').textContent = `Mis à jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
+    } catch(e) { statusEl.className = 'dispo-status'; statusEl.textContent = '— non disponible'; }
+  }
+
   document.getElementById('wellpassCode').addEventListener('input', checkReady);
-  document.getElementById('ghToken').addEventListener('input', () => {
-    localStorage.setItem('gh_token', document.getElementById('ghToken').value.trim());
-    checkReady();
-  });
+  document.getElementById('ghToken').addEventListener('input', () => { localStorage.setItem('gh_token', document.getElementById('ghToken').value.trim()); checkReady(); });
 
   window.addEventListener('load', () => {
     const saved = localStorage.getItem('gh_token');
     if (saved) document.getElementById('ghToken').value = saved;
     checkReady();
+    initDispo();
   });
 
-  function getToken() {
-    return (document.getElementById('ghToken').value || localStorage.getItem('gh_token') || '').trim();
-  }
-
+  function getToken() { return (document.getElementById('ghToken').value || localStorage.getItem('gh_token') || '').trim(); }
   function checkReady() {
-    const code  = document.getElementById('wellpassCode').value.trim();
+    const code = document.getElementById('wellpassCode').value.trim();
     const token = getToken();
     document.getElementById('reserveBtn').disabled = !(selectedDay && code.length > 2 && token.length > 10);
   }
+  function toggleToken() { document.getElementById('tokenSection').classList.toggle('visible'); }
 
-  function toggleToken() {
-    document.getElementById('tokenSection').classList.toggle('visible');
-  }
-
-  // ── Polling du résultat ────────────────────────────────────────────────────
-
-  async function getLatestRunId(token, after) {
-    // Récupère le run le plus récent déclenché après `after` (timestamp ms)
-    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?per_page=5&event=workflow_dispatch`;
-    const r = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
-    });
+  async function getLatestRunId(token, after, wfId) {
+    const r = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?per_page=5&event=workflow_dispatch`, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } });
     const data = await r.json();
-    const runs = (data.workflow_runs || []).filter(run => {
-      const created = new Date(run.created_at).getTime();
-      return created >= after - 5000; // 5s de marge
-    });
+    const runs = (data.workflow_runs || []).filter(run => new Date(run.created_at).getTime() >= after - 5000 && run.path && run.path.includes(wfId.replace('.yml','')));
     return runs.length > 0 ? runs[0] : null;
   }
 
-  async function pollRunResult(token, triggeredAt, runLink) {
-    const maxWait  = 3 * 60 * 1000; // 3 minutes max
-    const interval = 5000;           // poll toutes les 5s
-    const start    = Date.now();
-
+  async function pollRunResult(token, triggeredAt) {
+    const maxWait = 3 * 60 * 1000, interval = 5000, start = Date.now();
     let run = null;
-
-    // Étape 1 : attendre que le run apparaisse (jusqu'à 20s)
     setProgress(['⏳ Démarrage du runner…', '⏸ En attente…', '⏸ Vérification du résultat…']);
-    for (let i = 0; i < 8; i++) {
-      await sleep(interval);
-      run = await getLatestRunId(token, triggeredAt);
-      if (run) break;
-    }
-
-    if (!run) {
-      showStatus('error', '❌ Impossible de trouver le run GitHub Actions.<br>Vérifie manuellement sur GitHub.');
-      return;
-    }
-
-    // Mettre à jour le lien
+    for (let i = 0; i < 8; i++) { await sleep(interval); run = await getLatestRunId(token, triggeredAt, WORKFLOW_ID); if (run) break; }
+    if (!run) { showStatus('error', '❌ Run introuvable. Vérifie sur GitHub.'); return; }
     document.getElementById('runLink').href = run.html_url;
     document.getElementById('runLink').style.display = 'block';
-
-    // Étape 2 : attendre la fin du run
     setProgress(['✅ Runner démarré', '⏳ Script en cours (~1 min)…', '⏸ Vérification du résultat…']);
     while (Date.now() - start < maxWait) {
       await sleep(interval);
-      const r = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${run.id}`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
-      );
+      const r = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${run.id}`, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } });
       const runData = await r.json();
-
-      if (runData.status === 'completed') {
-        setProgress(['✅ Runner démarré', '✅ Script terminé', '⏳ Lecture du résultat…']);
-        await sleep(2000);
-        await readRunResult(token, run.id, runData.conclusion);
-        return;
-      }
+      if (runData.status === 'completed') { setProgress(['✅ Runner démarré', '✅ Script terminé', '⏳ Lecture du résultat…']); await sleep(2000); await readRunResult(token, run.id, runData.conclusion); return; }
     }
-
-    showStatus('warning', '⚠️ Timeout — le script a pris trop de temps.<br>Vérifie le résultat sur GitHub Actions.');
+    showStatus('warning', '⚠️ Timeout — vérifie sur GitHub Actions.');
   }
 
   async function readRunResult(token, runId, conclusion) {
-    // Récupérer les logs du job pour extraire le message final
-    try {
-      const jobsR = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${runId}/jobs`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
-      );
-      const jobsData = await jobsR.json();
-      const job = (jobsData.jobs || [])[0];
-
-      if (!job) throw new Error('Job introuvable');
-
-      // Chercher le step "Run booker" et son output
-      const runStep = (job.steps || []).find(s => s.name === 'Run booker');
-      const stepConclusion = runStep ? runStep.conclusion : conclusion;
-
-      if (conclusion === 'success') {
-        showStatus('success',
-          `✅ <strong>Réservation confirmée !</strong><br><br>` +
-          `${selectedDay} 7h00–8h00 · Terrain 7<br>` +
-          `<small style="color:#4fc3f7">Vérifie ta boîte mail pour la confirmation UCPA.</small>`
-        );
-      } else {
-        // Essayer de lire le message d'erreur depuis les logs
-        const msg = await getErrorFromLogs(token, runId);
-        showStatus('error', `❌ <strong>Échec de la réservation</strong><br><br>${msg}`);
-      }
-    } catch(e) {
-      // Fallback sur la conclusion brute
-      if (conclusion === 'success') {
-        showStatus('success', '✅ Réservation confirmée !');
-      } else {
-        showStatus('error', `❌ Échec (${conclusion})<br>Vérifie les logs GitHub Actions.`);
-      }
+    if (conclusion === 'success') {
+      showStatus('success', `✅ <strong>Réservation confirmée !</strong><br><br>${selectedDay} 7h00–8h00 · Terrain 7<br><small style="color:#4fc3f7">Vérifie ta boîte mail pour la confirmation UCPA.</small>`);
+    } else {
+      const msg = await getErrorMessage(token, runId);
+      showStatus('error', `❌ <strong>Échec de la réservation</strong><br><br>${msg}`);
     }
     setProgress(null);
   }
 
-  async function getErrorFromLogs(token, runId) {
-    // Télécharger les logs du run pour extraire le message d'erreur
+  async function getErrorMessage(token, runId) {
     try {
-      const r = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${runId}/logs`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
-      );
-      // Les logs sont un zip — on ne peut pas les lire directement depuis le browser
-      // On cherche dans le résultat JSON du script à la place
-      return getLoglinesFromJobs(token, runId);
-    } catch(e) {
-      return 'Consulte les logs GitHub Actions pour le détail.';
-    }
-  }
-
-  async function getLoglinesFromJobs(token, runId) {
-    // Lire les annotations du run (contiennent souvent le message d'erreur)
-    try {
-      const r = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${runId}/jobs`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } }
-      );
+      const r = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${runId}/jobs`, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' } });
       const data = await r.json();
       const job = (data.jobs || [])[0];
-      if (!job) return 'Erreur inconnue.';
-
-      // Chercher dans les steps le message d'erreur
-      const failedStep = (job.steps || []).find(s => s.conclusion === 'failure');
-      if (failedStep) {
-        // Messages d'erreur connus
-        if (failedStep.name === 'Run booker') {
-          return 'Le script a échoué. Causes possibles :<br>• Code Wellpass invalide ou déjà utilisé<br>• Créneau non disponible<br>• Problème de connexion UCPA';
-        }
-        return `Étape "${failedStep.name}" a échoué.`;
-      }
-      return 'Erreur inconnue — vérifie les logs.';
-    } catch(e) {
-      return 'Impossible de lire le détail de l\'erreur.';
-    }
+      const failedStep = (job?.steps || []).find(s => s.conclusion === 'failure');
+      if (failedStep?.name === 'Run booker') return 'Causes possibles :<br>• Code Wellpass invalide ou déjà utilisé<br>• Créneau non disponible<br>• Problème de connexion UCPA';
+      return 'Erreur inconnue — consulte les logs GitHub Actions.';
+    } catch(e) { return 'Impossible de lire le détail.'; }
   }
 
   function setProgress(steps) {
-    if (!steps) {
-      const prog = document.getElementById('progressSteps');
-      if (prog) prog.remove();
-      return;
-    }
+    if (!steps) { const p = document.getElementById('progressSteps'); if (p) p.remove(); return; }
     let prog = document.getElementById('progressSteps');
-    if (!prog) {
-      prog = document.createElement('div');
-      prog.id = 'progressSteps';
-      prog.className = 'progress-steps';
-      document.getElementById('statusBox').appendChild(prog);
-    }
-    prog.innerHTML = steps.map((s, i) => {
-      const cls = s.startsWith('✅') ? 'done' : s.startsWith('⏳') ? 'current' : '';
-      return `<div class="${cls}">${s}</div>`;
-    }).join('');
+    if (!prog) { prog = document.createElement('div'); prog.id = 'progressSteps'; prog.className = 'progress-steps'; document.getElementById('statusBox').appendChild(prog); }
+    prog.innerHTML = steps.map(s => `<div class="${s.startsWith('✅')?'done':s.startsWith('⏳')?'current':''}">${s}</div>`).join('');
   }
 
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-  // ── Déclenchement ──────────────────────────────────────────────────────────
-
   async function reserve() {
-    const code  = document.getElementById('wellpassCode').value.trim();
+    const code = document.getElementById('wellpassCode').value.trim();
     const token = getToken();
     if (!selectedDay || !code || !token) return;
-
     const btn = document.getElementById('reserveBtn');
     btn.disabled = true;
     document.getElementById('runLink').style.display = 'none';
-
     const triggeredAt = Date.now();
-
-    showStatus('loading',
-      `<span class="spinner"></span><strong>Réservation en cours…</strong><br>` +
-      `<small style="opacity:0.7">Le script tourne dans le cloud, résultat dans ~1–2 min.</small>`
-    );
-
+    showStatus('loading', `<span class="spinner spinner-lg"></span><strong>Réservation en cours…</strong><br><small style="opacity:0.7">Résultat dans ~1–2 min.</small>`);
     try {
-      const resp = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW_ID}/dispatches`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ref: 'main',
-            inputs: { chosen_day: selectedDay, wellpass_code: code }
-          })
-        }
-      );
-
-      if (resp.status === 204) {
-        // Déclenché — on poll le résultat
-        await pollRunResult(token, triggeredAt, null);
-      } else {
-        const err = await resp.json().catch(() => ({}));
-        showStatus('error', `❌ Erreur ${resp.status}<br>${err.message || 'Vérifie ton token GitHub.'}`);
-        btn.disabled = false;
-      }
-    } catch(e) {
-      showStatus('error', `❌ Erreur réseau<br>${e.message}`);
-      btn.disabled = false;
-    }
-
+      const resp = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW_ID}/dispatches`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main', inputs: { chosen_day: selectedDay, wellpass_code: code } }) });
+      if (resp.status === 204) { await pollRunResult(token, triggeredAt); }
+      else { const err = await resp.json().catch(() => ({})); showStatus('error', `❌ Erreur ${resp.status}<br>${err.message || 'Vérifie ton token GitHub.'}`); }
+    } catch(e) { showStatus('error', `❌ Erreur réseau<br>${e.message}`); }
     btn.disabled = false;
   }
 
-  function showStatus(type, html) {
-    const box = document.getElementById('statusBox');
-    box.className = 'status ' + type;
-    box.innerHTML = html;
-    box.style.display = 'block';
-  }
+  function showStatus(type, html) { const box = document.getElementById('statusBox'); box.className = 'status ' + type; box.innerHTML = html; box.style.display = 'block'; }
 </script>
 </body>
 </html>
