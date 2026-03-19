@@ -18,10 +18,15 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          pip install requests playwright
+          playwright install chromium
+          playwright install-deps chromium
 
       - name: Check disponibilités
         env:
+          UCPA_EMAIL: ${{ secrets.UCPA_EMAIL }}
+          UCPA_PASSWORD: ${{ secrets.UCPA_PASSWORD }}
           GH_TOKEN: ${{ secrets.GH_PAT }}
           GH_REPO_OWNER: GClaudio64
           GH_REPO_NAME: padel-booker
