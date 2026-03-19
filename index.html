@@ -152,9 +152,12 @@
   }
 
   function isDispoFresh(data) {
-    if (!data || !data.semaine || !data.jours) return false;
+    if (!data || !data.semaine || !data.jours || !data.updated) return false;
     const expected = `${fmt(weekDays[0].date)} – ${fmt(weekDays[3].date)}`;
-    return data.semaine === expected;
+    if (data.semaine !== expected) return false;
+    // Considérer comme périmé après 30 minutes
+    const updatedAt = new Date(data.updated).getTime();
+    return Date.now() - updatedAt < 30 * 60 * 1000;
   }
 
   async function triggerAndWaitDispo(token) {
@@ -164,9 +167,8 @@
       { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main' }) }
     );
     if (resp.status !== 204) throw new Error(`Erreur déclenchement: ${resp.status}`);
-    await sleep(10000); // attendre 10s avant le premier poll
-    for (let i = 0; i < 30; i++) {
-      await sleep(3000);
+    for (let i = 0; i < 20; i++) {
+      await sleep(5000);
       const data = await loadExistingDispo();
       if (data && isDispoFresh(data) && data.updated) {
         const updatedAt = new Date(data.updated).getTime();
