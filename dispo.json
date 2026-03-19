@@ -1,6 +1,6 @@
 {
-  "updated": "2026-03-19T11:44:03",
-  "semaine": "23/03 – 26/03",
+  "updated": "2026-03-19T12:41:28",
+  "semaine": "23/03 - 26/03",
   "jours": {
     "Lundi": {
       "date": "23/03",
@@ -8,15 +8,15 @@
     },
     "Mardi": {
       "date": "24/03",
-      "terrains": 0
+      "terrains": 1
     },
     "Mercredi": {
       "date": "25/03",
-      "terrains": 0
+      "terrains": 2
     },
     "Jeudi": {
       "date": "26/03",
-      "terrains": 0
+      "terrains": 1
     }
   }
 }
