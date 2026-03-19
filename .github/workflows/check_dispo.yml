@@ -1,0 +1,28 @@
+name: Check Dispo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Check disponibilités
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_REPO_OWNER: GClaudio64
+          GH_REPO_NAME: padel-booker
+        run: python check_dispo.py
