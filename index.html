@@ -110,7 +110,7 @@
 
   let selectedDay = null;
   const weekDays = nextWeekDates();
-  document.getElementById('weekRange').textContent = `${fmt(weekDays[0].date)} – ${fmt(weekDays[3].date)}`;
+  document.getElementById('weekRange').textContent = `${fmt(weekDays[0].date)} - ${fmt(weekDays[3].date)}`;
 
   const grid = document.getElementById('dayGrid');
   weekDays.forEach(({ name, date }) => {
@@ -152,13 +152,12 @@
   }
 
   function isDispoFresh(data) {
-    if (!data || !data.semaine || !data.jours || !data.updated) return false;
-    const expected = `${fmt(weekDays[0].date)} – ${fmt(weekDays[3].date)}`;
-    if (data.semaine !== expected) return false;
-    // Considérer comme périmé après 30 minutes
-    const updatedAt = new Date(data.updated).getTime();
-    return Date.now() - updatedAt < 30 * 60 * 1000;
-  }
+      if (!data || !data.semaine || !data.jours || !data.updated) return false;
+      const expected = `${fmt(weekDays[0].date)} - ${fmt(weekDays[3].date)}`;
+      const normalizedSemaine = data.semaine.replace(/\u2013/g, '-');
+      if (normalizedSemaine !== expected) return false;
+      return true;
+    }
 
   async function triggerAndWaitDispo(token) {
     const triggeredAt = Date.now();
@@ -179,30 +178,26 @@
   }
 
   async function initDispo() {
-    const statusEl = document.getElementById('dispoStatus');
-    const existing = await loadExistingDispo();
-    if (existing && isDispoFresh(existing)) {
-      applyDispos(existing.jours);
-      statusEl.className = 'dispo-status done';
-      statusEl.textContent = '✓ à jour';
-      if (existing.updated) {
-        const d = new Date(existing.updated);
-        document.getElementById('dispoUpdated').textContent = `Mis à jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
+      const statusEl = document.getElementById('dispoStatus');
+      const existing = await loadExistingDispo();
+      if (existing && existing.jours) {
+        const expected = `${fmt(weekDays[0].date)} - ${fmt(weekDays[3].date)}`;
+        const normalizedSemaine = (existing.semaine || '').replace(/\u2013/g, '-');
+        if (normalizedSemaine === expected) {
+          applyDispos(existing.jours);
+          statusEl.className = 'dispo-status done';
+          statusEl.textContent = '\u2713 \u00e0 jour';
+          if (existing.updated) {
+            const d = new Date(existing.updated);
+            document.getElementById('dispoUpdated').textContent =
+              `Mis \u00e0 jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
+          }
+          return;
+        }
       }
-      return;
+      statusEl.className = 'dispo-status';
+      statusEl.textContent = '\u2014 dispos inconnues';
     }
-    const token = getToken();
-    if (!token) { statusEl.className = 'dispo-status'; statusEl.textContent = '— dispos inconnues'; return; }
-    statusEl.innerHTML = '<span class="spinner"></span>mise à jour…';
-    try {
-      const data = await triggerAndWaitDispo(token);
-      applyDispos(data.jours);
-      statusEl.className = 'dispo-status done';
-      statusEl.textContent = '✓ à jour';
-      const d = new Date(data.updated);
-      document.getElementById('dispoUpdated').textContent = `Mis à jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
-    } catch(e) { statusEl.className = 'dispo-status'; statusEl.textContent = '— non disponible'; }
-  }
 
   document.getElementById('wellpassCode').addEventListener('input', checkReady);
   document.getElementById('ghToken').addEventListener('input', () => { localStorage.setItem('gh_token', document.getElementById('ghToken').value.trim()); checkReady(); });
