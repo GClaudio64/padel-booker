@@ -180,23 +180,44 @@
   async function initDispo() {
       const statusEl = document.getElementById('dispoStatus');
       const existing = await loadExistingDispo();
+      const expected = `${fmt(weekDays[0].date)} - ${fmt(weekDays[3].date)}`;
+
+      // 1. Show cached data immediately if available
       if (existing && existing.jours) {
-        const expected = `${fmt(weekDays[0].date)} - ${fmt(weekDays[3].date)}`;
         const normalizedSemaine = (existing.semaine || '').replace(/\u2013/g, '-');
         if (normalizedSemaine === expected) {
           applyDispos(existing.jours);
-          statusEl.className = 'dispo-status done';
-          statusEl.textContent = '\u2713 \u00e0 jour';
           if (existing.updated) {
             const d = new Date(existing.updated);
             document.getElementById('dispoUpdated').textContent =
               `Mis \u00e0 jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
           }
-          return;
         }
       }
-      statusEl.className = 'dispo-status';
-      statusEl.textContent = '\u2014 dispos inconnues';
+
+      // 2. If token available, trigger fresh check in background
+      const token = getToken();
+      if (!token) {
+        statusEl.className = existing ? 'dispo-status done' : 'dispo-status';
+        statusEl.textContent = existing ? '\u2713 en cache' : '\u2014 token requis';
+        return;
+      }
+
+      statusEl.className = 'dispo-status loading';
+      statusEl.innerHTML = '<span class="spinner"></span>actualisation\u2026';
+
+      try {
+        const data = await triggerAndWaitDispo(token);
+        applyDispos(data.jours);
+        statusEl.className = 'dispo-status done';
+        statusEl.textContent = '\u2713 \u00e0 jour';
+        const d = new Date(data.updated);
+        document.getElementById('dispoUpdated').textContent =
+          `Mis \u00e0 jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
+      } catch(e) {
+        statusEl.className = existing ? 'dispo-status done' : 'dispo-status';
+        statusEl.textContent = existing ? '\u2713 en cache' : '\u2014 erreur actualisation';
+      }
     }
 
   document.getElementById('wellpassCode').addEventListener('input', checkReady);
