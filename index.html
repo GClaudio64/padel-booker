@@ -181,12 +181,14 @@
       const statusEl = document.getElementById('dispoStatus');
       const existing = await loadExistingDispo();
       const expected = `${fmt(weekDays[0].date)} - ${fmt(weekDays[3].date)}`;
+      let hasValidCache = false;
 
-      // 1. Show cached data immediately if available
+      // 1. Show cached data immediately if available for this week
       if (existing && existing.jours) {
-        const normalizedSemaine = (existing.semaine || '').replace(/\u2013/g, '-');
-        if (normalizedSemaine === expected) {
+        const ns = (existing.semaine || '').replace(/\u2013/g, '-');
+        if (ns === expected) {
           applyDispos(existing.jours);
+          hasValidCache = true;
           if (existing.updated) {
             const d = new Date(existing.updated);
             document.getElementById('dispoUpdated').textContent =
@@ -195,14 +197,21 @@
         }
       }
 
-      // 2. If token available, trigger fresh check in background
+      // 2. Only trigger a refresh if data is older than 5 minutes
       const token = getToken();
-      if (!token) {
-        statusEl.className = existing ? 'dispo-status done' : 'dispo-status';
-        statusEl.textContent = existing ? '\u2713 en cache' : '\u2014 token requis';
+      const dataAge = existing && existing.updated
+        ? Date.now() - new Date(existing.updated).getTime()
+        : Infinity;
+      const FIVE_MIN = 5 * 60 * 1000;
+
+      if (!token || dataAge < FIVE_MIN) {
+        // No token or data is fresh enough -> done
+        statusEl.className = hasValidCache ? 'dispo-status done' : 'dispo-status';
+        statusEl.textContent = hasValidCache ? '\u2713 \u00e0 jour' : '\u2014 token requis';
         return;
       }
 
+      // 3. Data is stale -> trigger background refresh
       statusEl.className = 'dispo-status loading';
       statusEl.innerHTML = '<span class="spinner"></span>actualisation\u2026';
 
@@ -215,8 +224,8 @@
         document.getElementById('dispoUpdated').textContent =
           `Mis \u00e0 jour ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}`;
       } catch(e) {
-        statusEl.className = existing ? 'dispo-status done' : 'dispo-status';
-        statusEl.textContent = existing ? '\u2713 en cache' : '\u2014 erreur actualisation';
+        statusEl.className = hasValidCache ? 'dispo-status done' : 'dispo-status';
+        statusEl.textContent = hasValidCache ? '\u2713 en cache' : '\u2014 erreur';
       }
     }
 
