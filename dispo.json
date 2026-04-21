@@ -1,21 +1,21 @@
 {
-  "updated": "2026-04-02T15:06:20",
-  "semaine": "06/04 - 09/04",
+  "updated": "2026-04-21T19:49:52",
+  "semaine": "27/04 - 30/04",
   "jours": {
     "Lundi": {
-      "date": "06/04",
-      "terrains": 2
+      "date": "27/04",
+      "terrains": 1
     },
     "Mardi": {
-      "date": "07/04",
+      "date": "28/04",
       "terrains": 2
     },
     "Mercredi": {
-      "date": "08/04",
+      "date": "29/04",
       "terrains": 2
     },
     "Jeudi": {
-      "date": "09/04",
+      "date": "30/04",
       "terrains": 2
     }
   }
